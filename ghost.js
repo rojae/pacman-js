@@ -44,15 +44,23 @@ class Ghost {
     }
 
     isInRange() {
-        let xDistance = Math.abs(pacman.getMapX() - this.getMapX());
-        let yDistance = Math.abs(pacman.getMapY() - this.getMapY());
-        if (
-            Math.sqrt(xDistance * xDistance + yDistance * yDistance) <=
-            this.range
-        ) {
+        // Blinky and Boss always chase pacman (no range limit)
+        if (this.ghostType === GHOST_TYPE.BLINKY || this.ghostType === GHOST_TYPE.BOSS) {
             return true;
         }
-        return false;
+
+        // Pinky has extended range for ambush
+        if (this.ghostType === GHOST_TYPE.PINKY) {
+            return true; // Always tries to ambush
+        }
+
+        // Other ghosts use range check but with larger range
+        let xDistance = Math.abs(pacman.getMapX() - this.getMapX());
+        let yDistance = Math.abs(pacman.getMapY() - this.getMapY());
+        let distance = Math.sqrt(xDistance * xDistance + yDistance * yDistance);
+
+        // Increase effective range for more aggressive behavior
+        return distance <= this.range * 1.5;
     }
 
     changeRandomDirection() {
