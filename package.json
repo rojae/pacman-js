@@ -1,0 +1,11 @@
+{
+  "name": "pacman-js",
+  "version": "1.0.0",
+  "description": "Pacman game made by rojae",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "rojae",
+  "license": "MIT"
+}

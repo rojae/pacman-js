@@ -97,19 +97,30 @@ class Ghost {
 
     checkCollisions() {
         let isCollided = false;
+
+        // Check map boundaries
+        if (this.x < 0 || this.y < 0 ||
+            this.x + this.width > map[0].length * oneBlockSize ||
+            this.y + this.height > map.length * oneBlockSize) {
+            return true;
+        }
+
+        let mapX = parseInt(this.x / oneBlockSize);
+        let mapY = parseInt(this.y / oneBlockSize);
+        let mapXEnd = parseInt(this.x / oneBlockSize + 0.9999);
+        let mapYEnd = parseInt(this.y / oneBlockSize + 0.9999);
+
+        // Check if indices are within bounds
+        if (mapY < 0 || mapY >= map.length || mapX < 0 || mapX >= map[0].length ||
+            mapYEnd < 0 || mapYEnd >= map.length || mapXEnd < 0 || mapXEnd >= map[0].length) {
+            return true;
+        }
+
         if (
-            map[parseInt(this.y / oneBlockSize)][
-                parseInt(this.x / oneBlockSize)
-            ] == 1 ||
-            map[parseInt(this.y / oneBlockSize + 0.9999)][
-                parseInt(this.x / oneBlockSize)
-            ] == 1 ||
-            map[parseInt(this.y / oneBlockSize)][
-                parseInt(this.x / oneBlockSize + 0.9999)
-            ] == 1 ||
-            map[parseInt(this.y / oneBlockSize + 0.9999)][
-                parseInt(this.x / oneBlockSize + 0.9999)
-            ] == 1
+            map[mapY][mapX] == 1 ||
+            map[mapYEnd][mapX] == 1 ||
+            map[mapY][mapXEnd] == 1 ||
+            map[mapYEnd][mapXEnd] == 1
         ) {
             isCollided = true;
         }
@@ -147,7 +158,6 @@ class Ghost {
         } else {
             this.moveBackwards();
         }
-        console.log(this.direction);
     }
 
     calculateNewDirection(map, destX, destY) {
@@ -188,7 +198,7 @@ class Ghost {
 
         if (
             poped.x - 1 >= 0 &&
-            poped.x - 1 < numOfRows &&
+            poped.x - 1 < numOfColumns &&
             mp[poped.y][poped.x - 1] != 1
         ) {
             let tempMoves = poped.moves.slice();
@@ -197,7 +207,7 @@ class Ghost {
         }
         if (
             poped.x + 1 >= 0 &&
-            poped.x + 1 < numOfRows &&
+            poped.x + 1 < numOfColumns &&
             mp[poped.y][poped.x + 1] != 1
         ) {
             let tempMoves = poped.moves.slice();
@@ -206,7 +216,7 @@ class Ghost {
         }
         if (
             poped.y - 1 >= 0 &&
-            poped.y - 1 < numOfColumns &&
+            poped.y - 1 < numOfRows &&
             mp[poped.y - 1][poped.x] != 1
         ) {
             let tempMoves = poped.moves.slice();
@@ -215,7 +225,7 @@ class Ghost {
         }
         if (
             poped.y + 1 >= 0 &&
-            poped.y + 1 < numOfColumns &&
+            poped.y + 1 < numOfRows &&
             mp[poped.y + 1][poped.x] != 1
         ) {
             let tempMoves = poped.moves.slice();
