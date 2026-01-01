@@ -1,3 +1,12 @@
+// Ghost AI Types (like original Pac-Man)
+const GHOST_TYPE = {
+    BLINKY: 'blinky',  // Red - Direct chase, aggressive
+    PINKY: 'pinky',    // Pink - Ambush, targets ahead of pacman
+    INKY: 'inky',      // Cyan - Unpredictable, random movement
+    CLYDE: 'clyde',    // Orange - Shy, runs away when close
+    BOSS: 'boss'       // King Ghost - 1.5x size, crown, 500 points
+};
+
 class Ghost {
     constructor(
         x,
@@ -9,7 +18,8 @@ class Ghost {
         imageY,
         imageWidth,
         imageHeight,
-        range
+        range,
+        ghostType = GHOST_TYPE.BLINKY
     ) {
         this.x = x;
         this.y = y;
@@ -22,11 +32,15 @@ class Ghost {
         this.imageHeight = imageHeight;
         this.imageWidth = imageWidth;
         this.range = range;
+        this.ghostType = ghostType;
         this.randomTargetIndex = parseInt(Math.random() * 4);
         this.target = randomTargetsForGhosts[this.randomTargetIndex];
+
+        // Inky changes direction more frequently
+        let directionChangeInterval = this.ghostType === GHOST_TYPE.INKY ? 3000 : 10000;
         setInterval(() => {
             this.changeRandomDirection();
-        }, 10000);
+        }, directionChangeInterval);
     }
 
     isInRange() {
@@ -49,7 +63,7 @@ class Ghost {
 
     moveProcess() {
         if (this.isInRange()) {
-            this.target = pacman;
+            this.target = this.getTargetByType();
         } else {
             this.target = randomTargetsForGhosts[this.randomTargetIndex];
         }
@@ -59,6 +73,99 @@ class Ghost {
             this.moveBackwards();
             return;
         }
+    }
+
+    // Get target position based on ghost personality
+    getTargetByType() {
+        switch (this.ghostType) {
+            case GHOST_TYPE.BLINKY:
+                // Blinky: Direct chase - targets pacman's current position
+                return pacman;
+
+            case GHOST_TYPE.PINKY:
+                // Pinky: Ambush - targets 4 tiles ahead of pacman
+                return this.getPinkyTarget();
+
+            case GHOST_TYPE.INKY:
+                // Inky: Unpredictable - random target or pacman
+                return this.getInkyTarget();
+
+            case GHOST_TYPE.CLYDE:
+                // Clyde: Shy - chases when far, runs when close
+                return this.getClydeTarget();
+
+            case GHOST_TYPE.BOSS:
+                // Boss: Relentless pursuer - always targets pacman directly
+                return pacman;
+
+            default:
+                return pacman;
+        }
+    }
+
+    // Pinky targets 4 tiles ahead of pacman's direction
+    getPinkyTarget() {
+        let targetX = pacman.x;
+        let targetY = pacman.y;
+        let lookAhead = 4 * oneBlockSize;
+
+        switch (pacman.direction) {
+            case DIRECTION_RIGHT:
+                targetX += lookAhead;
+                break;
+            case DIRECTION_LEFT:
+                targetX -= lookAhead;
+                break;
+            case DIRECTION_UP:
+                targetY -= lookAhead;
+                break;
+            case DIRECTION_BOTTOM:
+                targetY += lookAhead;
+                break;
+        }
+
+        // Clamp to map bounds
+        targetX = Math.max(0, Math.min(targetX, (map[0].length - 1) * oneBlockSize));
+        targetY = Math.max(0, Math.min(targetY, (map.length - 1) * oneBlockSize));
+
+        return { x: targetX, y: targetY };
+    }
+
+    // Inky has unpredictable behavior
+    getInkyTarget() {
+        // 30% chance to target random corner, 70% chance to chase
+        if (Math.random() < 0.3) {
+            return randomTargetsForGhosts[parseInt(Math.random() * 4)];
+        }
+        return pacman;
+    }
+
+    // Clyde runs away when too close to pacman
+    getClydeTarget() {
+        let distance = Math.sqrt(
+            Math.pow(pacman.x - this.x, 2) + Math.pow(pacman.y - this.y, 2)
+        );
+
+        // If closer than 8 tiles, run to corner
+        if (distance < 8 * oneBlockSize) {
+            // Run to the corner farthest from pacman
+            let farthestCorner = randomTargetsForGhosts[0];
+            let maxDist = 0;
+
+            for (let corner of randomTargetsForGhosts) {
+                let cornerDist = Math.sqrt(
+                    Math.pow(pacman.x - corner.x, 2) + Math.pow(pacman.y - corner.y, 2)
+                );
+                if (cornerDist > maxDist) {
+                    maxDist = cornerDist;
+                    farthestCorner = corner;
+                }
+            }
+            return farthestCorner;
+        }
+
+        // Otherwise chase pacman
+        return pacman;
     }
 
     moveBackwards() {
@@ -107,8 +214,8 @@ class Ghost {
 
         let mapX = parseInt(this.x / oneBlockSize);
         let mapY = parseInt(this.y / oneBlockSize);
-        let mapXEnd = parseInt(this.x / oneBlockSize + 0.9999);
-        let mapYEnd = parseInt(this.y / oneBlockSize + 0.9999);
+        let mapXEnd = parseInt((this.x + this.width - 1) / oneBlockSize);
+        let mapYEnd = parseInt((this.y + this.height - 1) / oneBlockSize);
 
         // Check if indices are within bounds
         if (mapY < 0 || mapY >= map.length || mapX < 0 || mapX >= map[0].length ||
@@ -246,12 +353,12 @@ class Ghost {
     }
 
     getMapXRightSide() {
-        let mapX = parseInt((this.x * 0.99 + oneBlockSize) / oneBlockSize);
+        let mapX = parseInt((this.x + this.width - 1) / oneBlockSize);
         return mapX;
     }
 
     getMapYRightSide() {
-        let mapY = parseInt((this.y * 0.99 + oneBlockSize) / oneBlockSize);
+        let mapY = parseInt((this.y + this.height - 1) / oneBlockSize);
         return mapY;
     }
 
@@ -262,28 +369,199 @@ class Ghost {
 
     draw() {
         canvasContext.save();
-        canvasContext.drawImage(
-            ghostFrames,
-            this.imageX,
-            this.imageY,
-            this.imageWidth,
-            this.imageHeight,
-            this.x,
-            this.y,
-            this.width,
-            this.height
-        );
+
+        if (this.isScared) {
+            // Draw scared ghost (blue, wobbly)
+            let wobble = Math.sin(Date.now() / 50 + this.x) * 2;
+
+            // Blue ghost body
+            canvasContext.fillStyle = isPowerMode && powerModeTimer < 90
+                ? (Math.sin(Date.now() / 100) > 0 ? '#0000FF' : '#FFFFFF') // Flash when power ending
+                : '#0000FF';
+
+            // Ghost body shape
+            canvasContext.beginPath();
+            let centerX = this.x + oneBlockSize / 2;
+            let centerY = this.y + oneBlockSize / 2;
+
+            // Draw rounded top
+            canvasContext.arc(centerX + wobble, centerY - 2, oneBlockSize / 2 - 2, Math.PI, 0);
+
+            // Draw wavy bottom
+            let bottomY = this.y + this.height - 2;
+            canvasContext.lineTo(this.x + this.width - 2, bottomY);
+            for (let i = 3; i >= 0; i--) {
+                let waveX = this.x + 2 + (i * (this.width - 4) / 3);
+                let waveY = bottomY + (i % 2 === 0 ? 4 : -2);
+                canvasContext.lineTo(waveX + wobble, waveY);
+            }
+            canvasContext.closePath();
+            canvasContext.fill();
+
+            // Scared eyes (X X pattern)
+            canvasContext.strokeStyle = '#FFFFFF';
+            canvasContext.lineWidth = 2;
+            let eyeY = centerY - 2;
+
+            // Left eye X
+            canvasContext.beginPath();
+            canvasContext.moveTo(centerX - 6 + wobble, eyeY - 3);
+            canvasContext.lineTo(centerX - 2 + wobble, eyeY + 3);
+            canvasContext.moveTo(centerX - 2 + wobble, eyeY - 3);
+            canvasContext.lineTo(centerX - 6 + wobble, eyeY + 3);
+            canvasContext.stroke();
+
+            // Right eye X
+            canvasContext.beginPath();
+            canvasContext.moveTo(centerX + 2 + wobble, eyeY - 3);
+            canvasContext.lineTo(centerX + 6 + wobble, eyeY + 3);
+            canvasContext.moveTo(centerX + 6 + wobble, eyeY - 3);
+            canvasContext.lineTo(centerX + 2 + wobble, eyeY + 3);
+            canvasContext.stroke();
+
+            // Wavy scared mouth
+            canvasContext.beginPath();
+            canvasContext.strokeStyle = '#FFFFFF';
+            canvasContext.lineWidth = 1.5;
+            let mouthY = centerY + 5;
+            canvasContext.moveTo(centerX - 5 + wobble, mouthY);
+            canvasContext.lineTo(centerX - 3 + wobble, mouthY - 2);
+            canvasContext.lineTo(centerX + wobble, mouthY);
+            canvasContext.lineTo(centerX + 3 + wobble, mouthY - 2);
+            canvasContext.lineTo(centerX + 5 + wobble, mouthY);
+            canvasContext.stroke();
+
+        } else if (this.ghostType === GHOST_TYPE.BOSS) {
+            // Boss ghost - 1.5x size with crown
+            let scale = 1.5;
+            let centerX = this.x + oneBlockSize / 2;
+            let centerY = this.y + oneBlockSize / 2;
+            let wobble = Math.sin(Date.now() / 100) * 2;
+
+            // Glow effect
+            canvasContext.shadowColor = '#FFD700';
+            canvasContext.shadowBlur = 15;
+
+            // Purple ghost body (larger)
+            canvasContext.fillStyle = '#8B00FF';
+            canvasContext.beginPath();
+
+            // Draw rounded top (bigger)
+            let radius = (oneBlockSize / 2) * scale;
+            canvasContext.arc(centerX, centerY - 5, radius, Math.PI, 0);
+
+            // Draw wavy bottom
+            let bottomY = centerY + radius - 5;
+            canvasContext.lineTo(centerX + radius, bottomY);
+            for (let i = 4; i >= 0; i--) {
+                let waveX = centerX - radius + (i * (radius * 2) / 4);
+                let waveY = bottomY + (i % 2 === 0 ? 6 : -3);
+                canvasContext.lineTo(waveX, waveY);
+            }
+            canvasContext.closePath();
+            canvasContext.fill();
+
+            canvasContext.shadowBlur = 0;
+
+            // Boss eyes (bigger, menacing)
+            canvasContext.fillStyle = '#FFFFFF';
+            canvasContext.beginPath();
+            canvasContext.ellipse(centerX - 8, centerY - 8, 6, 8, 0, 0, Math.PI * 2);
+            canvasContext.fill();
+            canvasContext.beginPath();
+            canvasContext.ellipse(centerX + 8, centerY - 8, 6, 8, 0, 0, Math.PI * 2);
+            canvasContext.fill();
+
+            // Pupils (looking at pacman)
+            canvasContext.fillStyle = '#FF0000';
+            let pupilOffsetX = pacman ? Math.sign(pacman.x - this.x) * 2 : 0;
+            let pupilOffsetY = pacman ? Math.sign(pacman.y - this.y) * 2 : 0;
+            canvasContext.beginPath();
+            canvasContext.arc(centerX - 8 + pupilOffsetX, centerY - 8 + pupilOffsetY, 3, 0, Math.PI * 2);
+            canvasContext.fill();
+            canvasContext.beginPath();
+            canvasContext.arc(centerX + 8 + pupilOffsetX, centerY - 8 + pupilOffsetY, 3, 0, Math.PI * 2);
+            canvasContext.fill();
+
+            // Draw crown on top
+            let crownY = centerY - radius - 8;
+            let crownSize = 16;
+
+            canvasContext.fillStyle = '#FFD700';
+            canvasContext.beginPath();
+            canvasContext.moveTo(centerX - crownSize / 2, crownY + 5);
+            canvasContext.lineTo(centerX - crownSize / 2, crownY);
+            canvasContext.lineTo(centerX - crownSize / 4, crownY - crownSize * 0.4);
+            canvasContext.lineTo(centerX - crownSize / 4, crownY + 2);
+            canvasContext.lineTo(centerX, crownY - crownSize * 0.6);
+            canvasContext.lineTo(centerX + crownSize / 4, crownY + 2);
+            canvasContext.lineTo(centerX + crownSize / 4, crownY - crownSize * 0.4);
+            canvasContext.lineTo(centerX + crownSize / 2, crownY);
+            canvasContext.lineTo(centerX + crownSize / 2, crownY + 5);
+            canvasContext.closePath();
+            canvasContext.fill();
+
+            // Crown gems
+            canvasContext.fillStyle = '#FF0000';
+            canvasContext.beginPath();
+            canvasContext.arc(centerX, crownY - crownSize * 0.3, 3, 0, Math.PI * 2);
+            canvasContext.fill();
+
+            canvasContext.fillStyle = '#00FF00';
+            canvasContext.beginPath();
+            canvasContext.arc(centerX - crownSize / 3, crownY, 2, 0, Math.PI * 2);
+            canvasContext.fill();
+            canvasContext.beginPath();
+            canvasContext.arc(centerX + crownSize / 3, crownY, 2, 0, Math.PI * 2);
+            canvasContext.fill();
+
+        } else {
+            // Normal ghost drawing
+            canvasContext.drawImage(
+                ghostFrames,
+                this.imageX,
+                this.imageY,
+                this.imageWidth,
+                this.imageHeight,
+                this.x,
+                this.y,
+                this.width,
+                this.height
+            );
+
+            // Draw type indicator (small colored dot)
+            let indicatorColor;
+            switch (this.ghostType) {
+                case GHOST_TYPE.BLINKY:
+                    indicatorColor = '#FF0000'; // Red
+                    break;
+                case GHOST_TYPE.PINKY:
+                    indicatorColor = '#FFB8FF'; // Pink
+                    break;
+                case GHOST_TYPE.INKY:
+                    indicatorColor = '#00FFFF'; // Cyan
+                    break;
+                case GHOST_TYPE.CLYDE:
+                    indicatorColor = '#FFB852'; // Orange
+                    break;
+                default:
+                    indicatorColor = '#FFFFFF';
+            }
+
+            // Small indicator dot on top of ghost
+            canvasContext.beginPath();
+            canvasContext.fillStyle = indicatorColor;
+            canvasContext.arc(
+                this.x + oneBlockSize / 2,
+                this.y + 2,
+                3,
+                0,
+                2 * Math.PI
+            );
+            canvasContext.fill();
+        }
+
         canvasContext.restore();
-        canvasContext.beginPath();
-        canvasContext.strokeStyle = "red";
-        canvasContext.arc(
-            this.x + oneBlockSize / 2,
-            this.y + oneBlockSize / 2,
-            this.range * oneBlockSize,
-            0,
-            2 * Math.PI
-        );
-        canvasContext.stroke();
     }
 }
 

@@ -29,13 +29,32 @@ class Pacman {
 
         for (let i = 0; i < map.length; i++) {
             for (let j = 0; j < map[0].length; j++) {
-                if (
-                    map[i][j] == 2 &&
-                    this.getMapX() == j &&
-                    this.getMapY() == i
-                ) {
-                    map[i][j] = 3;
-                    score++;
+                if (this.getMapX() == j && this.getMapY() == i) {
+                    if (map[i][j] == 2) {
+                        // Regular food
+                        map[i][j] = 3;
+                        score++;
+                        // Play eat sound (throttled to avoid too many sounds)
+                        if (score % 3 === 0) {
+                            playEatSound();
+                        }
+                    } else if (map[i][j] == 4) {
+                        // Power Pellet!
+                        map[i][j] = 3;
+                        score += 50;
+
+                        // Create explosion at pellet location
+                        let pelletX = j * oneBlockSize + oneBlockSize / 2;
+                        let pelletY = i * oneBlockSize + oneBlockSize / 2;
+                        createPowerPelletExplosion(pelletX, pelletY);
+
+                        // Activate power mode
+                        playPowerPelletSound();
+                        activatePowerMode();
+
+                        // Add floating text
+                        floatingTexts.push(new FloatingText(pelletX, pelletY, 'POWER!', '#FFD700'));
+                    }
                 }
             }
         }
