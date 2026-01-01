@@ -749,52 +749,34 @@ if (isMobile) {
     let btnRight = document.getElementById("btn-right");
     let btnHide = document.getElementById("btn-hide");
 
-    // Button press handlers
+    // Button press handlers (CSS handles visual feedback via :active)
     btnUp.addEventListener("touchstart", (e) => {
         e.preventDefault();
         pacman.nextDirection = DIRECTION_UP;
-        btnUp.style.background = "rgba(255,255,0,1)";
     }, { passive: false });
 
     btnDown.addEventListener("touchstart", (e) => {
         e.preventDefault();
         pacman.nextDirection = DIRECTION_BOTTOM;
-        btnDown.style.background = "rgba(255,255,0,1)";
     }, { passive: false });
 
     btnLeft.addEventListener("touchstart", (e) => {
         e.preventDefault();
         pacman.nextDirection = DIRECTION_LEFT;
-        btnLeft.style.background = "rgba(255,255,0,1)";
     }, { passive: false });
 
     btnRight.addEventListener("touchstart", (e) => {
         e.preventDefault();
         pacman.nextDirection = DIRECTION_RIGHT;
-        btnRight.style.background = "rgba(255,255,0,1)";
     }, { passive: false });
 
     // Hide button
     btnHide.addEventListener("touchstart", (e) => {
         e.preventDefault();
         toggleHide();
-        btnHide.style.background = "rgba(0,255,255,1)";
-    }, { passive: false });
-
-    btnHide.addEventListener("touchend", (e) => {
-        e.preventDefault();
-        btnHide.style.background = "rgba(0,255,255,0.7)";
     }, { passive: false });
 
     btnHide.addEventListener("click", () => toggleHide());
-
-    // Reset button styles on touch end
-    [btnUp, btnDown, btnLeft, btnRight].forEach(btn => {
-        btn.addEventListener("touchend", (e) => {
-            e.preventDefault();
-            btn.style.background = "rgba(255,255,0,0.7)";
-        }, { passive: false });
-    });
 
     // Also support mouse clicks for testing
     btnUp.addEventListener("click", () => pacman.nextDirection = DIRECTION_UP);

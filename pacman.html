@@ -25,25 +25,133 @@
         #canvas {
             display: block;
         }
+
+        /* Joystick styles */
+        #joystick-container {
+            display: none;
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 200px;
+            z-index: 1000;
+        }
+        #joystick-base {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(30,30,60,0.9) 0%, rgba(20,20,40,0.95) 100%);
+            border: 3px solid rgba(255,215,0,0.5);
+            box-shadow: 0 0 20px rgba(255,215,0,0.2), inset 0 0 30px rgba(0,0,0,0.5);
+        }
+        .joystick-btn {
+            position: absolute;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .joystick-btn:active {
+            transform: scale(0.92);
+        }
+        .dir-btn {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            background: linear-gradient(145deg, #ffeb3b, #ffc107);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4);
+            font-size: 22px;
+            color: #333;
+        }
+        .dir-btn:active {
+            background: linear-gradient(145deg, #fff176, #ffca28);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4);
+        }
+        #btn-up {
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        #btn-up:active {
+            transform: translateX(-50%) scale(0.92);
+        }
+        #btn-down {
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        #btn-down:active {
+            transform: translateX(-50%) scale(0.92);
+        }
+        #btn-left {
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        #btn-left:active {
+            transform: translateY(-50%) scale(0.92);
+        }
+        #btn-right {
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        #btn-right:active {
+            transform: translateY(-50%) scale(0.92);
+        }
+        #btn-hide {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #26c6da, #00acc1);
+            box-shadow: 0 4px 12px rgba(0,188,212,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            letter-spacing: 1px;
+        }
+        #btn-hide:active {
+            transform: translate(-50%, -50%) scale(0.92);
+            background: linear-gradient(145deg, #4dd0e1, #26c6da);
+        }
+
         @media (max-width: 768px) {
             #canvas {
                 width: 98vw;
                 height: auto;
                 max-width: 500px;
             }
+        }
+
+        @media (max-height: 700px) {
             #joystick-container {
-                width: 120px !important;
-                height: 120px !important;
-                bottom: 15px !important;
+                width: 160px !important;
+                height: 160px !important;
+                bottom: 20px !important;
             }
             #joystick-base {
-                width: 120px !important;
-                height: 120px !important;
+                width: 160px !important;
+                height: 160px !important;
             }
-            #joystick-container button {
-                width: 35px !important;
-                height: 35px !important;
-                font-size: 16px !important;
+            .dir-btn {
+                width: 42px !important;
+                height: 42px !important;
+                font-size: 18px !important;
+            }
+            #btn-hide {
+                width: 50px !important;
+                height: 50px !important;
+                font-size: 11px !important;
             }
         }
     </style>
@@ -53,15 +161,13 @@
     <canvas id="canvas" width="500" height="500"></canvas>
 
     <!-- Mobile Joystick Controls -->
-    <div id="joystick-container" style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 150px; height: 150px;">
-        <div id="joystick-base" style="position: absolute; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.4);">
-            <!-- Direction buttons -->
-            <button id="btn-up" style="position: absolute; top: 5px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; border-radius: 8px; background: rgba(255,255,0,0.7); border: none; font-size: 20px; cursor: pointer;">▲</button>
-            <button id="btn-down" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; border-radius: 8px; background: rgba(255,255,0,0.7); border: none; font-size: 20px; cursor: pointer;">▼</button>
-            <button id="btn-left" style="position: absolute; left: 5px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 8px; background: rgba(255,255,0,0.7); border: none; font-size: 20px; cursor: pointer;">◀</button>
-            <button id="btn-right" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 8px; background: rgba(255,255,0,0.7); border: none; font-size: 20px; cursor: pointer;">▶</button>
-            <!-- Center hide button -->
-            <button id="btn-hide" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 45px; height: 45px; border-radius: 50%; background: rgba(0,255,255,0.7); border: none; font-size: 12px; cursor: pointer; font-weight: bold; color: #000;">HIDE</button>
+    <div id="joystick-container">
+        <div id="joystick-base">
+            <button id="btn-up" class="joystick-btn dir-btn">▲</button>
+            <button id="btn-down" class="joystick-btn dir-btn">▼</button>
+            <button id="btn-left" class="joystick-btn dir-btn">◀</button>
+            <button id="btn-right" class="joystick-btn dir-btn">▶</button>
+            <button id="btn-hide" class="joystick-btn">HIDE</button>
         </div>
     </div>
 
