@@ -24,6 +24,9 @@ class Pacman {
     }
 
     eat() {
+        // Can't eat while hiding
+        if (isHiding) return;
+
         for (let i = 0; i < map.length; i++) {
             for (let j = 0; j < map[0].length; j++) {
                 if (
