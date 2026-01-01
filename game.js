@@ -209,6 +209,8 @@ const BOSS_SPAWN_INTERVAL = 1350; // 45 seconds at 30fps
 let bossWarningTimer = 0;
 const BOSS_WARNING_DURATION = 90; // 3 seconds warning before spawn
 let bossCount = 0;
+let bossInvincibilityTimer = 0; // Pacman invincibility after boss spawn
+const BOSS_INVINCIBILITY_DURATION = 60; // 2 seconds at 30fps
 
 // Particle class for visual effects
 class Particle {
@@ -343,12 +345,12 @@ let playBossSpawnSound = () => {
 // Spawn a boss ghost
 let spawnBossGhost = () => {
     bossCount++;
-    // Spawn at a clear location (row 4, column 10 - middle of open corridor)
-    let spawnRow = 4;
-    let spawnCol = 10;
+    // Spawn at pacman's current position
+    let spawnX = pacman.x;
+    let spawnY = pacman.y;
     let bossGhost = new Ghost(
-        spawnCol * oneBlockSize,
-        spawnRow * oneBlockSize,
+        spawnX,
+        spawnY,
         oneBlockSize,       // Use standard size for collision (drawn 1.5x visually)
         oneBlockSize,
         pacman.speed / 1.5, // Slightly slower but menacing
@@ -363,15 +365,18 @@ let spawnBossGhost = () => {
     playBossSpawnSound();
     screenShake = 15;
 
-    // Create spawn particles
-    let spawnX = spawnCol * oneBlockSize + oneBlockSize / 2;
-    let spawnY = spawnRow * oneBlockSize + oneBlockSize / 2;
+    // Give pacman invincibility to escape
+    bossInvincibilityTimer = BOSS_INVINCIBILITY_DURATION;
+
+    // Create spawn particles at pacman's position (center of sprite)
+    let particleX = spawnX + oneBlockSize / 2;
+    let particleY = spawnY + oneBlockSize / 2;
     let colors = ['#8B00FF', '#FFD700', '#FF00FF', '#FFFFFF'];
     for (let i = 0; i < 40; i++) {
-        particles.push(new Particle(spawnX, spawnY, colors[Math.floor(Math.random() * colors.length)], 'power'));
+        particles.push(new Particle(particleX, particleY, colors[Math.floor(Math.random() * colors.length)], 'power'));
     }
 
-    floatingTexts.push(new FloatingText(spawnX, spawnY - 20, 'BOSS #' + bossCount + '!', '#FFD700'));
+    floatingTexts.push(new FloatingText(particleX, particleY - 20, 'BOSS #' + bossCount + '!', '#FFD700'));
 };
 
 // Create power pellet explosion particles
@@ -1296,8 +1301,13 @@ let update = () => {
     pacman.eat();
     updateGhosts();
 
+    // Update boss invincibility timer
+    if (bossInvincibilityTimer > 0) {
+        bossInvincibilityTimer--;
+    }
+
     // Ghost collision logic
-    if (!isHiding) {
+    if (!isHiding && bossInvincibilityTimer <= 0) {
         for (let i = 0; i < ghosts.length; i++) {
             let ghost = ghosts[i];
             if (ghost.getMapX() == pacman.getMapX() && ghost.getMapY() == pacman.getMapY()) {
@@ -1476,6 +1486,9 @@ let draw = () => {
     canvasContext.save();
     if (isHiding) {
         canvasContext.globalAlpha = 0.3 + Math.sin(Date.now() / 100) * 0.2;
+    } else if (bossInvincibilityTimer > 0) {
+        // Flashing effect during boss spawn invincibility
+        canvasContext.globalAlpha = 0.4 + Math.sin(Date.now() / 50) * 0.6;
     }
 
     let pacmanScale = 1;
