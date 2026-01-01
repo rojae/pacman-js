@@ -116,22 +116,97 @@ let drawStartScreen = () => {
     canvasContext.font = "bold 36px Arial";
     canvasContext.fillStyle = "yellow";
     canvasContext.textAlign = "center";
-    canvasContext.fillText("PAC-MAN", canvas.width / 2, canvas.height / 2 - 60);
+    canvasContext.fillText("PAC-MAN", canvas.width / 2, canvas.height / 2 - 80);
 
     // Blinking "Press to Start" text
     if (Math.floor(startScreenFrame / 15) % 2 === 0) {
-        canvasContext.font = "20px Arial";
+        canvasContext.font = "18px Arial";
         canvasContext.fillStyle = "white";
-        canvasContext.fillText("PRESS ANY KEY OR TAP TO START", canvas.width / 2, canvas.height / 2);
+        canvasContext.fillText("PRESS ANY KEY OR TAP TO START", canvas.width / 2, canvas.height / 2 - 45);
     }
+
+    // Control instructions box
+    let boxX = canvas.width / 2 - 160;
+    let boxY = canvas.height / 2 - 25;
+    let boxWidth = 320;
+    let boxHeight = 130;
+
+    // Box background with gradient effect
+    canvasContext.fillStyle = "rgba(0, 0, 50, 0.9)";
+    canvasContext.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+    // Border with glow effect
+    canvasContext.strokeStyle = "#FFD700";
+    canvasContext.lineWidth = 2;
+    canvasContext.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    canvasContext.strokeStyle = "rgba(255, 215, 0, 0.3)";
+    canvasContext.lineWidth = 4;
+    canvasContext.strokeRect(boxX - 2, boxY - 2, boxWidth + 4, boxHeight + 4);
+
+    // Title
+    canvasContext.font = "bold 16px Arial";
+    canvasContext.fillStyle = "#FFD700";
+    canvasContext.fillText("HOW TO PLAY", canvas.width / 2, boxY + 22);
+
+    // Divider line
+    canvasContext.strokeStyle = "rgba(255, 215, 0, 0.5)";
+    canvasContext.lineWidth = 1;
+    canvasContext.beginPath();
+    canvasContext.moveTo(boxX + 20, boxY + 32);
+    canvasContext.lineTo(boxX + boxWidth - 20, boxY + 32);
+    canvasContext.stroke();
+
+    // Two column layout
+    let leftCol = canvas.width / 2 - 75;
+    let rightCol = canvas.width / 2 + 75;
+
+    // PC Column
+    canvasContext.font = "bold 13px Arial";
+    canvasContext.fillStyle = "#4CAF50";
+    canvasContext.fillText("PC", leftCol, boxY + 52);
+
+    canvasContext.font = "11px Arial";
+    canvasContext.fillStyle = "#DDD";
+    canvasContext.fillText("Move", leftCol, boxY + 70);
+    canvasContext.fillStyle = "#FFF";
+    canvasContext.fillText("Arrow / WASD", leftCol, boxY + 85);
+
+    canvasContext.fillStyle = "#DDD";
+    canvasContext.fillText("Hide", leftCol, boxY + 103);
+    canvasContext.fillStyle = "cyan";
+    canvasContext.fillText("SPACE", leftCol, boxY + 118);
+
+    // Mobile Column
+    canvasContext.font = "bold 13px Arial";
+    canvasContext.fillStyle = "#FF9800";
+    canvasContext.fillText("Mobile", rightCol, boxY + 52);
+
+    canvasContext.font = "11px Arial";
+    canvasContext.fillStyle = "#DDD";
+    canvasContext.fillText("Move", rightCol, boxY + 70);
+    canvasContext.fillStyle = "#FFF";
+    canvasContext.fillText("D-Pad / Swipe", rightCol, boxY + 85);
+
+    canvasContext.fillStyle = "#DDD";
+    canvasContext.fillText("Hide", rightCol, boxY + 103);
+    canvasContext.fillStyle = "cyan";
+    canvasContext.fillText("Center Button", rightCol, boxY + 118);
+
+    // Vertical divider
+    canvasContext.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    canvasContext.beginPath();
+    canvasContext.moveTo(canvas.width / 2, boxY + 42);
+    canvasContext.lineTo(canvas.width / 2, boxY + boxHeight - 10);
+    canvasContext.stroke();
 
     // Draw pacman animation
     let pacmanX = (startScreenFrame * 3) % (canvas.width + 60) - 30;
+    let animY = boxY + boxHeight + 35;
     canvasContext.beginPath();
     canvasContext.fillStyle = "yellow";
     let mouthAngle = Math.abs(Math.sin(startScreenFrame * 0.3)) * 0.5;
-    canvasContext.arc(pacmanX, canvas.height / 2 + 50, 15, mouthAngle, 2 * Math.PI - mouthAngle);
-    canvasContext.lineTo(pacmanX, canvas.height / 2 + 50);
+    canvasContext.arc(pacmanX, animY, 15, mouthAngle, 2 * Math.PI - mouthAngle);
+    canvasContext.lineTo(pacmanX, animY);
     canvasContext.fill();
 
     // Draw chasing ghosts
@@ -145,7 +220,7 @@ let drawStartScreen = () => {
                 124,
                 116,
                 ghostX - 10,
-                canvas.height / 2 + 35,
+                animY - 15,
                 20,
                 20
             );
@@ -155,7 +230,7 @@ let drawStartScreen = () => {
     // Ghost count info
     canvasContext.font = "14px Arial";
     canvasContext.fillStyle = "#888";
-    canvasContext.fillText("Ghosts: " + ghostCount, canvas.width / 2, canvas.height / 2 + 100);
+    canvasContext.fillText("Ghosts: " + ghostCount, canvas.width / 2, animY + 40);
 
     // Made by rojae
     canvasContext.font = "12px Arial";
@@ -241,12 +316,132 @@ let drawDeathAnimation = () => {
     canvasContext.restore();
 };
 
+let isGameOver = false;
+
 let gameOver = () => {
     clearInterval(gameInterval);
-    canvasContext.font = "40px Emulogic";
-    canvasContext.fillStyle = "red";
-    canvasContext.fillText("GAME OVER", canvas.width / 2 - 120, canvas.height / 2);
+    isGameOver = true;
+    drawGameOverScreen();
 };
+
+let drawGameOverScreen = () => {
+    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+    createRect(0, 0, canvas.width, canvas.height, "black");
+    drawWalls();
+
+    // Game Over text
+    canvasContext.font = "40px Arial";
+    canvasContext.fillStyle = "red";
+    canvasContext.textAlign = "center";
+    canvasContext.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 40);
+
+    // Final score
+    canvasContext.font = "20px Arial";
+    canvasContext.fillStyle = "white";
+    canvasContext.fillText("Score: " + score, canvas.width / 2, canvas.height / 2);
+
+    // Retry button
+    let btnX = canvas.width / 2 - 60;
+    let btnY = canvas.height / 2 + 20;
+    let btnWidth = 120;
+    let btnHeight = 40;
+
+    canvasContext.fillStyle = "#4CAF50";
+    canvasContext.fillRect(btnX, btnY, btnWidth, btnHeight);
+    canvasContext.strokeStyle = "white";
+    canvasContext.lineWidth = 2;
+    canvasContext.strokeRect(btnX, btnY, btnWidth, btnHeight);
+
+    canvasContext.font = "20px Arial";
+    canvasContext.fillStyle = "white";
+    canvasContext.fillText("RETRY", canvas.width / 2, btnY + 28);
+
+    canvasContext.textAlign = "left";
+};
+
+let restartGame = () => {
+    // Reset all game state
+    isGameOver = false;
+    gameStarted = true;
+    lives = 3;
+    score = 0;
+    isHiding = false;
+    hideCooldown = 0;
+    isPacmanDying = false;
+
+    // Reset map (restore all food)
+    map = [
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1],
+        [1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1],
+        [1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1],
+        [1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1],
+        [0, 0, 0, 0, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 0, 0, 0, 0],
+        [1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1],
+        [2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2],
+        [1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 2, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1],
+        [0, 0, 0, 0, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 0, 0, 0, 0],
+        [1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1],
+        [1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1],
+        [1, 1, 2, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 2, 1, 1],
+        [1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    ];
+
+    createNewPacman();
+    createGhosts();
+    gameInterval = setInterval(gameLoop, 1000 / fps);
+};
+
+// Handle retry button click
+canvas.addEventListener("click", (event) => {
+    if (!isGameOver) return;
+
+    let rect = canvas.getBoundingClientRect();
+    let scaleX = canvas.width / rect.width;
+    let scaleY = canvas.height / rect.height;
+    let x = (event.clientX - rect.left) * scaleX;
+    let y = (event.clientY - rect.top) * scaleY;
+
+    let btnX = canvas.width / 2 - 60;
+    let btnY = canvas.height / 2 + 20;
+    let btnWidth = 120;
+    let btnHeight = 40;
+
+    if (x >= btnX && x <= btnX + btnWidth && y >= btnY && y <= btnY + btnHeight) {
+        restartGame();
+    }
+});
+
+// Handle retry button touch
+canvas.addEventListener("touchstart", (event) => {
+    if (!isGameOver) return;
+
+    event.preventDefault();
+    let rect = canvas.getBoundingClientRect();
+    let scaleX = canvas.width / rect.width;
+    let scaleY = canvas.height / rect.height;
+    let touch = event.touches[0];
+    let x = (touch.clientX - rect.left) * scaleX;
+    let y = (touch.clientY - rect.top) * scaleY;
+
+    let btnX = canvas.width / 2 - 60;
+    let btnY = canvas.height / 2 + 20;
+    let btnWidth = 120;
+    let btnHeight = 40;
+
+    if (x >= btnX && x <= btnX + btnWidth && y >= btnY && y <= btnY + btnHeight) {
+        restartGame();
+    }
+}, { passive: false });
 
 let checkWin = () => {
     for (let i = 0; i < map.length; i++) {
