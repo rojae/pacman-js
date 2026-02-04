@@ -165,6 +165,156 @@ let wallSpaceWidth = oneBlockSize / 1.6;
 let wallOffset = (oneBlockSize - wallSpaceWidth) / 2;
 let wallInnerColor = "black";
 
+// ============= STAGE SYSTEM =============
+let currentStage = 1;
+const MAX_STAGE = 5;
+
+// Stage configurations
+const STAGE_CONFIG = {
+    1: { // Easy - 입문용
+        ghostCount: 4,
+        ghostSpeedMultiplier: 0.5,
+        powerModeDuration: 450, // 15초
+        bossSpawnInterval: 0, // 보스 없음
+        hideCooldown: 150, // 5초
+        powerPelletCount: 4,
+        bossCount: 0,
+        name: "EASY"
+    },
+    2: { // Normal - 현재 수준
+        ghostCount: 10,
+        ghostSpeedMultiplier: 1.0,
+        powerModeDuration: 300, // 10초
+        bossSpawnInterval: 1350, // 45초
+        hideCooldown: 300, // 10초
+        powerPelletCount: 4,
+        bossCount: 1,
+        name: "NORMAL"
+    },
+    3: { // Normal - 현재 수준
+        ghostCount: 10,
+        ghostSpeedMultiplier: 1.0,
+        powerModeDuration: 300, // 10초
+        bossSpawnInterval: 1350, // 45초
+        hideCooldown: 300, // 10초
+        powerPelletCount: 4,
+        bossCount: 1,
+        name: "NORMAL"
+    },
+    4: { // Hard - 어려움
+        ghostCount: 15,
+        ghostSpeedMultiplier: 1.5,
+        powerModeDuration: 150, // 5초
+        bossSpawnInterval: 900, // 30초
+        hideCooldown: 450, // 15초
+        powerPelletCount: 4,
+        bossCount: 1,
+        name: "HARD"
+    },
+    5: { // Hell - 거의 불가능
+        ghostCount: 20,
+        ghostSpeedMultiplier: 2.0,
+        powerModeDuration: 90, // 3초
+        bossSpawnInterval: 600, // 20초
+        hideCooldown: 600, // 20초
+        powerPelletCount: 2, // 파워펠릿 2개만
+        bossCount: 2, // 보스 동시 2마리
+        ghostCanPassWalls: true, // 일부 고스트 벽 통과
+        name: "HELL"
+    }
+};
+
+// Get current stage config
+let getStageConfig = () => {
+    return STAGE_CONFIG[currentStage] || STAGE_CONFIG[1];
+};
+
+// Test function: Jump to specific stage (콘솔에서 goToStage(3) 형태로 사용)
+window.goToStage = (stageNum) => {
+    if (stageNum < 1 || stageNum > MAX_STAGE) {
+        console.log(`Invalid stage. Please enter 1-${MAX_STAGE}`);
+        return;
+    }
+
+    currentStage = stageNum;
+    console.log(`Jumping to Stage ${stageNum} (${getStageConfig().name})`);
+
+    // Apply stage settings
+    let config = getStageConfig();
+    ghostCount = config.ghostCount;
+
+    // Reset game state for new stage
+    isPowerMode = false;
+    powerModeTimer = 0;
+    ghostCombo = 0;
+    particles = [];
+    floatingTexts = [];
+    screenShake = 0;
+    bossSpawnTimer = 0;
+    bossWarningTimer = 0;
+    bossCount = 0;
+    isHiding = false;
+    hideCooldown = 0;
+
+    // Reset map with stage-specific power pellets
+    resetMapForStage();
+
+    // Recreate pacman and ghosts
+    createNewPacman();
+    createGhosts();
+
+    console.log(`Stage ${stageNum} loaded:`, config);
+    return `Stage ${stageNum} (${config.name}) - Ghost: ${config.ghostCount}, Speed: ${config.ghostSpeedMultiplier}x`;
+};
+
+// Reset map for current stage (adjusts power pellet count)
+let resetMapForStage = () => {
+    let config = getStageConfig();
+
+    // Base map
+    map = [
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1],
+        [1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1],
+        [1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1],
+        [1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1],
+        [0, 0, 0, 0, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 0, 0, 0, 0],
+        [1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1],
+        [2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2],
+        [1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 2, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1],
+        [0, 0, 0, 0, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 0, 0, 0, 0],
+        [1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1],
+        [1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1],
+        [1, 1, 2, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 2, 1, 1],
+        [1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    ];
+
+    // Power pellet positions (4 corners)
+    let powerPelletPositions = [
+        {row: 1, col: 1},   // top-left
+        {row: 1, col: 19},  // top-right
+        {row: 21, col: 1},  // bottom-left
+        {row: 21, col: 19}  // bottom-right
+    ];
+
+    // Place power pellets based on stage config
+    let pelletsToPlace = Math.min(config.powerPelletCount, 4);
+    for (let i = 0; i < pelletsToPlace; i++) {
+        let pos = powerPelletPositions[i];
+        map[pos.row][pos.col] = 4;
+    }
+};
+// ============= END STAGE SYSTEM =============
+
 // we now create the map of the walls,
 // if 1 wall, if 0 not wall
 // 21 columns // 23 rows
@@ -400,7 +550,9 @@ let createGhostDeathExplosion = (x, y, ghostColor) => {
 // Activate power mode
 let activatePowerMode = () => {
     isPowerMode = true;
-    powerModeTimer = POWER_MODE_DURATION;
+    // Use stage-specific power mode duration
+    let config = getStageConfig();
+    powerModeTimer = config.powerModeDuration;
     ghostCombo = 0;
 
     // Make all ghosts scared
@@ -1120,6 +1272,16 @@ let restartGame = () => {
         gameOverInterval = null;
     }
 
+    // Clear game complete animation
+    if (gameCompleteInterval) {
+        clearInterval(gameCompleteInterval);
+        gameCompleteInterval = null;
+    }
+    isGameComplete = false;
+
+    // Reset stage to 1
+    currentStage = 1;
+
     // Reset all game state
     isGameOver = false;
     gameStarted = true;
@@ -1142,33 +1304,8 @@ let restartGame = () => {
     bossWarningTimer = 0;
     bossCount = 0;
 
-    // Reset map (restore all food including power pellets)
-    // Must match the initial map exactly!
-    map = [
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        [1, 4, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 4, 1],
-        [1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1],
-        [1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1],
-        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-        [1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1],
-        [1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1],
-        [1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1],
-        [0, 0, 0, 0, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 0, 0, 0, 0],
-        [1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1],
-        [2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2],
-        [1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 2, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1],
-        [0, 0, 0, 0, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 0, 0, 0, 0],
-        [1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1],
-        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-        [1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1],
-        [1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1],
-        [1, 1, 2, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 2, 1, 1],
-        [1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1],
-        [1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-        [1, 4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 1],
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    ];
+    // Reset map using stage-specific config
+    resetMapForStage();
 
     createNewPacman();
     createGhosts();
@@ -1177,9 +1314,9 @@ let restartGame = () => {
     gameInterval = setInterval(gameLoop, 1000 / fps);
 };
 
-// Handle retry button click
+// Handle retry/play again button click
 canvas.addEventListener("click", (event) => {
-    if (!isGameOver) return;
+    if (!isGameOver && !isGameComplete) return;
 
     let rect = canvas.getBoundingClientRect();
     let scaleX = canvas.width / rect.width;
@@ -1188,7 +1325,7 @@ canvas.addEventListener("click", (event) => {
     let y = (event.clientY - rect.top) * scaleY;
 
     let btnX = canvas.width / 2 - 60;
-    let btnY = canvas.height / 2 + 20;
+    let btnY = isGameComplete ? canvas.height / 2 + 110 : canvas.height / 2 + 20;
     let btnWidth = 120;
     let btnHeight = 40;
 
@@ -1197,9 +1334,9 @@ canvas.addEventListener("click", (event) => {
     }
 });
 
-// Handle retry button touch
+// Handle retry/play again button touch
 canvas.addEventListener("touchstart", (event) => {
-    if (!isGameOver) return;
+    if (!isGameOver && !isGameComplete) return;
 
     event.preventDefault();
     let rect = canvas.getBoundingClientRect();
@@ -1210,7 +1347,7 @@ canvas.addEventListener("touchstart", (event) => {
     let y = (touch.clientY - rect.top) * scaleY;
 
     let btnX = canvas.width / 2 - 60;
-    let btnY = canvas.height / 2 + 20;
+    let btnY = isGameComplete ? canvas.height / 2 + 110 : canvas.height / 2 + 20;
     let btnWidth = 120;
     let btnHeight = 40;
 
@@ -1230,20 +1367,190 @@ let checkWin = () => {
     return true;
 };
 
+let stageTransitionTimer = 0;
+let isStageTransition = false;
+let isGameComplete = false;
+let gameCompleteInterval = null;
+
 let gameWin = () => {
     clearInterval(gameInterval);
     stopBgMusic();
     playWinSound();
-    canvasContext.font = "40px Emulogic";
-    canvasContext.fillStyle = "lime";
-    canvasContext.fillText("YOU WIN!", canvas.width / 2 - 100, canvas.height / 2);
+
+    if (currentStage < MAX_STAGE) {
+        // Stage clear - show transition screen
+        isStageTransition = true;
+        stageTransitionTimer = 0;
+
+        let transitionInterval = setInterval(() => {
+            drawStageClearScreen();
+            stageTransitionTimer++;
+
+            // After 3 seconds, go to next stage
+            if (stageTransitionTimer >= fps * 3) {
+                clearInterval(transitionInterval);
+                isStageTransition = false;
+                goToNextStage();
+            }
+        }, 1000 / fps);
+    } else {
+        // All stages cleared - GAME COMPLETE!
+        isGameComplete = true;
+        if (gameCompleteInterval) clearInterval(gameCompleteInterval);
+        gameCompleteInterval = setInterval(drawGameCompleteScreen, 1000 / fps);
+    }
+};
+
+let drawStageClearScreen = () => {
+    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+    createRect(0, 0, canvas.width, canvas.height, "black");
+
+    // Background effect
+    let gradient = canvasContext.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, 300);
+    gradient.addColorStop(0, 'rgba(0, 100, 0, 0.3)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    canvasContext.fillStyle = gradient;
+    canvasContext.fillRect(0, 0, canvas.width, canvas.height);
+
+    canvasContext.textAlign = "center";
+
+    // Stage Clear text with pulsing effect
+    let pulse = Math.sin(stageTransitionTimer * 0.2) * 5;
+    canvasContext.font = `bold ${36 + pulse}px Arial`;
+    canvasContext.fillStyle = "#00FF00";
+    canvasContext.fillText("STAGE " + currentStage + " CLEAR!", canvas.width / 2, canvas.height / 2 - 60);
+
+    // Score
+    canvasContext.font = "24px Arial";
+    canvasContext.fillStyle = "#FFD700";
+    canvasContext.fillText("Score: " + score, canvas.width / 2, canvas.height / 2);
+
+    // Next stage preview
+    let nextConfig = STAGE_CONFIG[currentStage + 1];
+    canvasContext.font = "18px Arial";
+    canvasContext.fillStyle = "#FFF";
+    canvasContext.fillText("Next: Stage " + (currentStage + 1) + " - " + nextConfig.name, canvas.width / 2, canvas.height / 2 + 40);
+
+    // Difficulty info
+    canvasContext.font = "14px Arial";
+    canvasContext.fillStyle = "#AAA";
+    canvasContext.fillText("Ghosts: " + nextConfig.ghostCount + " | Speed: " + nextConfig.ghostSpeedMultiplier + "x", canvas.width / 2, canvas.height / 2 + 65);
+
+    // Countdown
+    let countdown = Math.ceil((fps * 3 - stageTransitionTimer) / fps);
+    canvasContext.font = "bold 48px Arial";
+    canvasContext.fillStyle = countdown <= 1 ? "#FF0000" : "#FFF";
+    canvasContext.fillText(countdown, canvas.width / 2, canvas.height / 2 + 130);
+
+    canvasContext.textAlign = "left";
+};
+
+let drawGameCompleteScreen = () => {
+    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+    createRect(0, 0, canvas.width, canvas.height, "black");
+
+    // Rainbow background effect
+    let time = Date.now() / 1000;
+    for (let i = 0; i < 5; i++) {
+        let hue = (time * 50 + i * 30) % 360;
+        canvasContext.fillStyle = `hsla(${hue}, 70%, 50%, 0.1)`;
+        canvasContext.beginPath();
+        canvasContext.arc(canvas.width/2, canvas.height/2, 200 - i * 30, 0, Math.PI * 2);
+        canvasContext.fill();
+    }
+
+    canvasContext.textAlign = "center";
+
+    // Victory text
+    canvasContext.font = "bold 42px Arial";
+    canvasContext.fillStyle = "#FFD700";
+    canvasContext.shadowColor = '#FFD700';
+    canvasContext.shadowBlur = 20;
+    canvasContext.fillText("GAME COMPLETE!", canvas.width / 2, canvas.height / 2 - 80);
+    canvasContext.shadowBlur = 0;
+
+    // All stages cleared
+    canvasContext.font = "24px Arial";
+    canvasContext.fillStyle = "#00FF00";
+    canvasContext.fillText("All 5 Stages Cleared!", canvas.width / 2, canvas.height / 2 - 30);
+
+    // Final score
+    canvasContext.font = "bold 28px Arial";
+    canvasContext.fillStyle = "#FFF";
+    canvasContext.fillText("Final Score: " + score, canvas.width / 2, canvas.height / 2 + 20);
+
+    // Lives bonus
+    let livesBonus = lives * 1000;
+    canvasContext.font = "18px Arial";
+    canvasContext.fillStyle = "#FFD700";
+    canvasContext.fillText("Lives Bonus: +" + livesBonus + " (" + lives + " x 1000)", canvas.width / 2, canvas.height / 2 + 55);
+
+    // Total
+    canvasContext.font = "bold 24px Arial";
+    canvasContext.fillStyle = "#00FFFF";
+    canvasContext.fillText("TOTAL: " + (score + livesBonus), canvas.width / 2, canvas.height / 2 + 90);
+
+    // Retry button
+    let btnX = canvas.width / 2 - 60;
+    let btnY = canvas.height / 2 + 110;
+    let btnWidth = 120;
+    let btnHeight = 40;
+
+    canvasContext.fillStyle = "#4CAF50";
+    canvasContext.fillRect(btnX, btnY, btnWidth, btnHeight);
+    canvasContext.strokeStyle = "white";
+    canvasContext.lineWidth = 2;
+    canvasContext.strokeRect(btnX, btnY, btnWidth, btnHeight);
+
+    canvasContext.font = "bold 18px Arial";
+    canvasContext.fillStyle = "white";
+    canvasContext.fillText("PLAY AGAIN", canvas.width / 2, btnY + 27);
+
+    canvasContext.textAlign = "left";
+};
+
+let goToNextStage = () => {
+    currentStage++;
+    console.log(`Advancing to Stage ${currentStage} (${getStageConfig().name})`);
+
+    // Apply new stage settings
+    let config = getStageConfig();
+    ghostCount = config.ghostCount;
+
+    // Reset game state for new stage (but keep score and lives!)
+    isPowerMode = false;
+    powerModeTimer = 0;
+    ghostCombo = 0;
+    particles = [];
+    floatingTexts = [];
+    screenShake = 0;
+    bossSpawnTimer = 0;
+    bossWarningTimer = 0;
+    bossCount = 0;
+    isHiding = false;
+    hideCooldown = 0;
+
+    // Reset map with stage-specific power pellets
+    resetMapForStage();
+
+    // Recreate pacman and ghosts
+    createNewPacman();
+    createGhosts();
+
+    // Start the game again
+    playStartSound();
+    startBgMusic();
+    gameInterval = setInterval(gameLoop, 1000 / fps);
 };
 
 let toggleHide = () => {
     if (hideCooldown > 0 || isHiding) return;
     isHiding = true;
     playHideSound();
-    hideCooldown = HIDE_COOLDOWN;
+
+    // Use stage-specific hide cooldown
+    let config = getStageConfig();
+    hideCooldown = config.hideCooldown;
 
     setTimeout(() => {
         isHiding = false;
@@ -1281,17 +1588,26 @@ let update = () => {
         screenShake -= 0.5;
     }
 
-    // Boss spawn timer
-    bossSpawnTimer++;
-    if (bossSpawnTimer >= BOSS_SPAWN_INTERVAL - BOSS_WARNING_DURATION && bossWarningTimer === 0) {
-        // Start warning
-        bossWarningTimer = BOSS_WARNING_DURATION;
-        playBossWarningSound();
-    }
-    if (bossSpawnTimer >= BOSS_SPAWN_INTERVAL) {
-        spawnBossGhost();
-        bossSpawnTimer = 0;
-        bossWarningTimer = 0;
+    // Boss spawn timer (stage-dependent)
+    let config = getStageConfig();
+    let bossInterval = config.bossSpawnInterval;
+
+    // Only spawn boss if stage has boss enabled
+    if (bossInterval > 0) {
+        bossSpawnTimer++;
+        if (bossSpawnTimer >= bossInterval - BOSS_WARNING_DURATION && bossWarningTimer === 0) {
+            // Start warning
+            bossWarningTimer = BOSS_WARNING_DURATION;
+            playBossWarningSound();
+        }
+        if (bossSpawnTimer >= bossInterval) {
+            // Spawn multiple bosses based on stage config
+            for (let i = 0; i < config.bossCount; i++) {
+                setTimeout(() => spawnBossGhost(), i * 500); // Stagger boss spawns
+            }
+            bossSpawnTimer = 0;
+            bossWarningTimer = 0;
+        }
     }
     if (bossWarningTimer > 0) {
         bossWarningTimer--;
@@ -1408,6 +1724,32 @@ let drawScore = () => {
         0,
         oneBlockSize * (map.length + 1)
     );
+};
+
+let drawStageIndicator = () => {
+    let config = getStageConfig();
+    let stageX = canvas.width / 2 - 40;
+    let stageY = oneBlockSize * (map.length + 1);
+
+    // Stage number with color based on difficulty
+    let stageColor;
+    switch(currentStage) {
+        case 1: stageColor = "#00FF00"; break; // Easy - Green
+        case 2:
+        case 3: stageColor = "#FFFF00"; break; // Normal - Yellow
+        case 4: stageColor = "#FF6600"; break; // Hard - Orange
+        case 5: stageColor = "#FF0000"; break; // Hell - Red
+        default: stageColor = "#FFFFFF";
+    }
+
+    canvasContext.font = "bold 16px Arial";
+    canvasContext.fillStyle = stageColor;
+    canvasContext.fillText("Stage " + currentStage, stageX, stageY);
+
+    // Difficulty name
+    canvasContext.font = "10px Arial";
+    canvasContext.fillStyle = "#AAA";
+    canvasContext.fillText(config.name, stageX + 60, stageY);
 };
 
 let drawHideStatus = () => {
@@ -1562,6 +1904,7 @@ let draw = () => {
     drawRemainingLives();
     drawHideStatus();
     drawPowerModeStatus();
+    drawStageIndicator();
     drawBossWarning();
 };
 
@@ -1664,17 +2007,25 @@ const ghostTypes = [GHOST_TYPE.BLINKY, GHOST_TYPE.PINKY, GHOST_TYPE.INKY, GHOST_
 
 let createGhosts = () => {
     ghosts = [];
+    let config = getStageConfig();
+
+    // Update ghostCount from stage config
+    ghostCount = config.ghostCount;
+
     for (let i = 0; i < ghostCount; i++) {
         // Assign ghost type based on index (cycles through 4 types)
         let ghostType = ghostTypes[i % 4];
 
-        // Adjust speed based on ghost type
+        // Base speed adjusted by ghost type
         let ghostSpeed = pacman.speed / 2;
         if (ghostType === GHOST_TYPE.BLINKY) {
             ghostSpeed = pacman.speed / 1.8; // Blinky is slightly faster
         } else if (ghostType === GHOST_TYPE.CLYDE) {
             ghostSpeed = pacman.speed / 2.2; // Clyde is slightly slower
         }
+
+        // Apply stage speed multiplier
+        ghostSpeed = ghostSpeed * config.ghostSpeedMultiplier;
 
         let newGhost = new Ghost(
             9 * oneBlockSize + (i % 2 == 0 ? 0 : 1) * oneBlockSize,
@@ -1689,6 +2040,12 @@ let createGhosts = () => {
             6 + i,
             ghostType
         );
+
+        // Stage 5: Some ghosts can pass walls (marked for special behavior)
+        if (config.ghostCanPassWalls && i % 3 === 0) {
+            newGhost.canPassWalls = true;
+        }
+
         ghosts.push(newGhost);
     }
 };
