@@ -6,7 +6,7 @@ A classic Pacman game built with vanilla JavaScript and HTML5 Canvas.
 
 ## Demo
 
-[Play Now](https://port-0-pacman-js-m8bka33ubb25cd8f.sel4.cloudtype.app/)
+[Play Now](https://pacman-js-theta.vercel.app)
 
 ## Features
 
